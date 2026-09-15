@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 
+const API_URL = "/api/students";
+
 function App() {
   const [students, setStudents] = useState([]);
   const [form, setForm] = useState({
@@ -8,14 +10,13 @@ function App() {
     name: "",
     email: "",
   });
-
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [editingId, setEditingId] = useState(null);
 
-  // Câu 47: Lấy danh sách sinh viên
   const fetchStudents = async () => {
     try {
-      const response = await fetch("/api/students");
+      const response = await fetch(API_URL);
 
       if (!response.ok) {
         throw new Error("Không thể lấy danh sách sinh viên");
@@ -33,7 +34,6 @@ function App() {
     fetchStudents();
   }, []);
 
-  // Câu 48: Xử lý Form
   const handleChange = (e) => {
     setForm({
       ...form,
@@ -41,7 +41,6 @@ function App() {
     });
   };
 
-  // Câu 49: Gửi dữ liệu POST
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -54,8 +53,14 @@ function App() {
       setLoading(true);
       setMessage("");
 
-      const response = await fetch("/api/students", {
-        method: "POST",
+      const url = editingId
+        ? `${API_URL}/${editingId}`
+        : API_URL;
+
+      const method = editingId ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method,
         headers: {
           "Content-Type": "application/json",
         },
@@ -65,10 +70,19 @@ function App() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Không thể thêm sinh viên");
+        throw new Error(
+          data.message ||
+            (editingId
+              ? "Không thể cập nhật sinh viên"
+              : "Không thể thêm sinh viên")
+        );
       }
 
-      setMessage("✅ Thêm sinh viên thành công!");
+      setMessage(
+        editingId
+          ? "✅ Cập nhật sinh viên thành công!"
+          : "✅ Thêm sinh viên thành công!"
+      );
 
       setForm({
         studentId: "",
@@ -76,7 +90,9 @@ function App() {
         email: "",
       });
 
-      fetchStudents();
+      setEditingId(null);
+
+      await fetchStudents();
     } catch (error) {
       console.error(error);
       setMessage("❌ " + error.message);
@@ -85,13 +101,83 @@ function App() {
     }
   };
 
+  const handleEdit = (student) => {
+    setEditingId(student._id);
+
+    setForm({
+      studentId: student.studentId,
+      name: student.name,
+      email: student.email,
+    });
+
+    setMessage("✏️ Đang chỉnh sửa sinh viên");
+  };
+
+  const handleDelete = async (id) => {
+    const confirmDelete = window.confirm(
+      "Bạn có chắc chắn muốn xóa sinh viên này không?"
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      setLoading(true);
+      setMessage("");
+
+      const response = await fetch(`${API_URL}/${id}`, {
+        method: "DELETE",
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || "Không thể xóa sinh viên"
+        );
+      }
+
+      setMessage("✅ Xóa sinh viên thành công!");
+
+      if (editingId === id) {
+        setEditingId(null);
+        setForm({
+          studentId: "",
+          name: "",
+          email: "",
+        });
+      }
+
+      await fetchStudents();
+    } catch (error) {
+      console.error(error);
+      setMessage("❌ " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+
+    setForm({
+      studentId: "",
+      name: "",
+      email: "",
+    });
+
+    setMessage("");
+  };
+
   return (
     <div className="container">
       <h1>Quản lý sinh viên</h1>
 
-      {/* Câu 48 */}
       <div className="form-box">
-        <h2>Thêm sinh viên</h2>
+        <h2>
+          {editingId
+            ? "Cập nhật sinh viên"
+            : "Thêm sinh viên"}
+        </h2>
 
         <form onSubmit={handleSubmit}>
           <input
@@ -119,17 +205,33 @@ function App() {
           />
 
           <button type="submit" disabled={loading}>
-            {loading ? "Đang gửi..." : "Thêm sinh viên"}
+            {loading
+              ? "Đang xử lý..."
+              : editingId
+              ? "Cập nhật"
+              : "Thêm sinh viên"}
           </button>
+
+          {editingId && (
+            <button
+              type="button"
+              onClick={handleCancelEdit}
+              disabled={loading}
+            >
+              Hủy sửa
+            </button>
+          )}
         </form>
 
-        {message && <p className="message">{message}</p>}
+        {message && (
+          <p className="message">{message}</p>
+        )}
       </div>
 
-      {/* Câu 47 */}
       <div className="students-box">
         <h2>Danh sách sinh viên</h2>
-{students.length === 0 ? (
+
+        {students.length === 0 ? (
           <p>Chưa có sinh viên.</p>
         ) : (
           <table>
@@ -138,6 +240,7 @@ function App() {
                 <th>MSSV</th>
                 <th>Họ tên</th>
                 <th>Email</th>
+                <th>Thao tác</th>
               </tr>
             </thead>
 
@@ -147,6 +250,23 @@ function App() {
                   <td>{student.studentId}</td>
                   <td>{student.name}</td>
                   <td>{student.email}</td>
+                  <td>
+                    <button
+                      onClick={() => handleEdit(student)}
+                      disabled={loading}
+                    >
+                      Sửa
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        handleDelete(student._id)
+                      }
+                      disabled={loading}
+                    >
+                      Xóa
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>

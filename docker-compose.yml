@@ -1,0 +1,16 @@
+services:
+  backend:
+    build:
+      context: ./merndemo
+      dockerfile: server/Dockerfile
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./merndemo/.env
+
+  frontend:
+    build:
+      context: ./client
+    ports:
+      - "8000:80"
+
