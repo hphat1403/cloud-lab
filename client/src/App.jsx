@@ -170,7 +170,7 @@ function App() {
 
   return (
     <div className="container">
-      <h1>Quản lý sinh viên</h1>
+      <h1>Student Management</h1>
 
       <div className="form-box">
         <h2>

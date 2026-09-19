@@ -1,0 +1,15 @@
+services:
+  backend:
+    image: hphat1403/mern-backend:1.0
+    network_mode: host
+    env_file:
+      - ./merndemo/.env
+
+  frontend: 
+    image: hphat1403/mern-frontend:2.0
+    ports:
+      - "8000:80"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+
