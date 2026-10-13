@@ -8,13 +8,44 @@ const Student = require("./models/Students");
 const app = express();
 
 // ================================
+// LOG HTTP REQUEST
+// ================================
+app.use((req, res, next) => {
+  const startTime = Date.now();
+
+  res.on("finish", () => {
+    console.log(
+      `${new Date().toISOString()} | ${req.method} ${req.originalUrl} | ${res.statusCode} | ${Date.now() - startTime}ms`
+    );
+  });
+
+  next();
+});
+
+// ================================
 // CẤU HÌNH CORS
 // ================================
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  "http://localhost:5173",
+  "http://localhost:3000",
+].filter(Boolean);
+
 const corsOptions = {
-  origin: "https://mern-frontend-237576.onrender.com",
+  origin: (origin, callback) => {
+    if (
+      !origin ||
+      allowedOrigins.includes(origin) ||
+      process.env.NODE_ENV !== "production"
+    ) {
+      return callback(null, true);
+    }
+
+    return callback(new Error("Origin không được phép bởi CORS"));
+  },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
-  optionsSuccessStatus: 204,
+  credentials: true,
 };
 
 app.use(cors(corsOptions));
@@ -43,6 +74,8 @@ app.get("/api/students", async (req, res) => {
     const students = await Student.find();
     res.status(200).json(students);
   } catch (error) {
+    console.error("Lỗi GET students:", error.message);
+
     res.status(500).json({
       message: "Lỗi khi lấy danh sách sinh viên",
       error: error.message,
@@ -59,6 +92,8 @@ app.post("/api/students", async (req, res) => {
     const student = await Student.create(req.body);
     res.status(201).json(student);
   } catch (error) {
+    console.error("Lỗi POST student:", error.message);
+
     res.status(400).json({
       message: "Lỗi khi thêm sinh viên",
       error: error.message,
@@ -89,6 +124,8 @@ app.put("/api/students/:id", async (req, res) => {
 
     res.status(200).json(student);
   } catch (error) {
+    console.error("Lỗi PUT student:", error.message);
+
     res.status(400).json({
       message: "Lỗi khi cập nhật sinh viên",
       error: error.message,
@@ -117,6 +154,8 @@ app.delete("/api/students/:id", async (req, res) => {
       student,
     });
   } catch (error) {
+    console.error("Lỗi DELETE student:", error.message);
+
     res.status(400).json({
       message: "Lỗi khi xóa sinh viên",
       error: error.message,
@@ -136,8 +175,10 @@ mongoose
 
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
+      console.log("HTTP request logging enabled");
     });
   })
   .catch((error) => {
     console.error("MongoDB connection error:", error);
+    process.exit(1);
   });

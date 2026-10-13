@@ -1,5 +1,9 @@
 *.log
-*.tmp bin/
-*.tmp bin/
+*.tmp
+bin/
 build/
+node_modules/
+.env
+.env.*
+!.env.example
 
