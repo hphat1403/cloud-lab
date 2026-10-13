@@ -1,25 +1,38 @@
 const express = require("express");
 const mongoose = require("mongoose");
+const cors = require("cors");
 require("dotenv").config();
 
 const Student = require("./models/Students");
 
 const app = express();
 
-app.use(cors()); // 
+// ================================
+// CẤU HÌNH CORS
+// ================================
+app.use(
+  cors({
+    origin: "https://mern-frontend-237576.onrender.com",
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
+// Middleware
 app.use(express.json());
 
-
-// API kiểm tra server
+// ================================
+// API KIỂM TRA SERVER
+// ================================
 app.get("/api/hello", (req, res) => {
-  res.json({
-    message: "Backend đang hoạt động!"
+  res.status(200).json({
+    message: "Backend đang hoạt động!",
   });
 });
 
-
 // ================================
 // CÂU 36: GET /api/students
+// Lấy danh sách sinh viên
 // ================================
 app.get("/api/students", async (req, res) => {
   try {
@@ -29,14 +42,14 @@ app.get("/api/students", async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: "Lỗi khi lấy danh sách sinh viên",
-      error: error.message
+      error: error.message,
     });
   }
 });
 
-
 // ================================
 // CÂU 37: POST /api/students
+// Thêm sinh viên
 // ================================
 app.post("/api/students", async (req, res) => {
   try {
@@ -46,14 +59,14 @@ app.post("/api/students", async (req, res) => {
   } catch (error) {
     res.status(400).json({
       message: "Lỗi khi thêm sinh viên",
-      error: error.message
+      error: error.message,
     });
   }
 });
 
-
 // ================================
 // CÂU 38: PUT /api/students/:id
+// Cập nhật sinh viên
 // ================================
 app.put("/api/students/:id", async (req, res) => {
   try {
@@ -62,13 +75,13 @@ app.put("/api/students/:id", async (req, res) => {
       req.body,
       {
         new: true,
-        runValidators: true
+        runValidators: true,
       }
     );
 
     if (!student) {
       return res.status(404).json({
-        message: "Không tìm thấy sinh viên"
+        message: "Không tìm thấy sinh viên",
       });
     }
 
@@ -76,14 +89,14 @@ app.put("/api/students/:id", async (req, res) => {
   } catch (error) {
     res.status(400).json({
       message: "Lỗi khi cập nhật sinh viên",
-      error: error.message
+      error: error.message,
     });
   }
 });
 
-
 // ================================
 // CÂU 39: DELETE /api/students/:id
+// Xóa sinh viên
 // ================================
 app.delete("/api/students/:id", async (req, res) => {
   try {
@@ -93,24 +106,25 @@ app.delete("/api/students/:id", async (req, res) => {
 
     if (!student) {
       return res.status(404).json({
-        message: "Không tìm thấy sinh viên"
+        message: "Không tìm thấy sinh viên",
       });
     }
 
     res.status(200).json({
       message: "Xóa sinh viên thành công",
-      student
+      student,
     });
   } catch (error) {
     res.status(400).json({
       message: "Lỗi khi xóa sinh viên",
-      error: error.message
+      error: error.message,
     });
   }
 });
 
-
-// Kết nối MongoDB Atlas
+// ================================
+// KẾT NỐI MONGODB ATLAS
+// ================================
 mongoose
   .connect(process.env.MONGODB_URI)
   .then(() => {
