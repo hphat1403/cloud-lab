@@ -1,4 +1,4 @@
-const express = require("express");
+onst express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 require("dotenv").config();
@@ -10,19 +10,23 @@ const app = express();
 // ================================
 // CẤU HÌNH CORS
 // ================================
-app.use(
-  cors({
-    origin: "https://mern-frontend-237576.onrender.com",
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+const corsOptions = {
+  origin: "https://mern-frontend-237576.onrender.com",
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
 
-// Middleware
+app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
+
+// ================================
+// MIDDLEWARE
+// ================================
 app.use(express.json());
 
 // ================================
 // API KIỂM TRA SERVER
+// GET /api/hello
 // ================================
 app.get("/api/hello", (req, res) => {
   res.status(200).json({
