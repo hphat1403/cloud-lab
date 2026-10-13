@@ -6,6 +6,7 @@ const Student = require("./models/Students");
 
 const app = express();
 
+app.use(cors()); // 
 app.use(express.json());
 
 

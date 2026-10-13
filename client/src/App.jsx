@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 
-const API_URL = "/api/students";
+const BASE_URL = import.meta.env.VITE_API_URL || "https://mern-backend-237576.onrender.com";
+const API_URL = `${BASE_URL}/api/students`
 
 function App() {
   const [students, setStudents] = useState([]);

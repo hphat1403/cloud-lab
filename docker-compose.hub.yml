@@ -1,15 +1,29 @@
 services:
   backend:
     image: hphat1403/mern-backend:1.0
+<<<<<<< HEAD
     network_mode: host
     env_file:
       - ./merndemo/.env
 
   frontend: 
+=======
+    ports:
+      - "5000:5000"
+    dns:
+      - 168.63.129.16
+    env_file:
+      - ./merndemo/.env
+
+  frontend:
+>>>>>>> c882972 (Add CORS middleware)
     image: hphat1403/mern-frontend:2.0
     ports:
       - "8000:80"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> c882972 (Add CORS middleware)
