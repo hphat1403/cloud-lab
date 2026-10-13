@@ -1,4 +1,4 @@
-onst express = require("express");
+const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 require("dotenv").config();
@@ -14,10 +14,10 @@ const corsOptions = {
   origin: "https://mern-frontend-237576.onrender.com",
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
+  optionsSuccessStatus: 204,
 };
 
 app.use(cors(corsOptions));
-app.options(/.*/, cors(corsOptions));
 
 // ================================
 // MIDDLEWARE
@@ -41,7 +41,6 @@ app.get("/api/hello", (req, res) => {
 app.get("/api/students", async (req, res) => {
   try {
     const students = await Student.find();
-
     res.status(200).json(students);
   } catch (error) {
     res.status(500).json({
@@ -58,7 +57,6 @@ app.get("/api/students", async (req, res) => {
 app.post("/api/students", async (req, res) => {
   try {
     const student = await Student.create(req.body);
-
     res.status(201).json(student);
   } catch (error) {
     res.status(400).json({
