@@ -1,52 +1,128 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "https://mern-backend-237576.onrender.com";
-const API_URL = `${BASE_URL}/api/students`
+const API_URL = "/api/students";
+
+const EMPTY_FORM = {
+  studentId: "",
+  name: "",
+  email: "",
+};
+
+// Gọi API và xử lý lỗi phản hồi
+async function apiRequest(url, options = {}) {
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      Accept: "application/json",
+      ...(options.body
+        ? { "Content-Type": "application/json" }
+        : {}),
+      ...options.headers,
+    },
+  });
+
+  const contentType = response.headers.get("content-type") || "";
+  const body = await response.text();
+
+  // Ghi lại chi tiết để dễ tìm lỗi trong Chrome Console
+  console.log("API response:", {
+    requestedURL: url,
+    finalURL: response.url,
+    status: response.status,
+    contentType,
+    responseBody: body.slice(0, 500),
+  });
+
+  if (!response.ok) {
+    let message = `HTTP ${response.status}`;
+
+    if (contentType.includes("application/json")) {
+      try {
+        const errorData = JSON.parse(body);
+        message = errorData.message || message;
+      } catch {
+        // Giữ nguyên thông báo HTTP
+      }
+    } else if (body) {
+      message += `: ${body.slice(0, 150)}`;
+    }
+
+    throw new Error(message);
+  }
+
+  if (!contentType.includes("application/json")) {
+    console.error("API không trả về JSON:", {
+      requestedURL: url,
+      finalURL: response.url,
+      status: response.status,
+      contentType,
+      responseBody: body.slice(0, 500),
+    });
+
+    throw new Error(
+      `API trả về dữ liệu không phải JSON. HTTP ${response.status}. ` +
+      `URL: ${response.url}`
+    );
+  }
+
+  try {
+    return JSON.parse(body);
+  } catch {
+    throw new Error("Backend trả về JSON không hợp lệ.");
+  }
+}
 
 function App() {
   const [students, setStudents] = useState([]);
-  const [form, setForm] = useState({
-    studentId: "",
-    name: "",
-    email: "",
-  });
+  const [form, setForm] = useState(EMPTY_FORM);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [editingId, setEditingId] = useState(null);
 
-  const fetchStudents = async () => {
+  // Lấy danh sách sinh viên
+  async function fetchStudents() {
     try {
-      const response = await fetch(API_URL);
+      const data = await apiRequest(API_URL);
 
-      if (!response.ok) {
-        throw new Error("Không thể lấy danh sách sinh viên");
+      if (!Array.isArray(data)) {
+        throw new Error(
+          "API không trả về danh sách sinh viên dạng mảng."
+        );
       }
 
-      const data = await response.json();
       setStudents(data);
+      setMessage("");
     } catch (error) {
-      console.error(error);
-      setMessage("❌ Không thể kết nối Backend API");
+      console.error("Fetch students error:", error);
+      setMessage(`❌ ${error.message}`);
     }
-  };
+  }
 
   useEffect(() => {
     fetchStudents();
   }, []);
 
-  const handleChange = (e) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
-  };
+  // Xử lý thay đổi form
+  function handleChange(event) {
+    const { name, value } = event.target;
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+    setForm((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
+  }
 
-    if (!form.studentId || !form.name || !form.email) {
-      setMessage("⚠️ Vui lòng nhập đầy đủ thông tin");
+  // Thêm hoặc cập nhật sinh viên
+  async function handleSubmit(event) {
+    event.preventDefault();
+
+    if (
+      !form.studentId.trim() ||
+      !form.name.trim() ||
+      !form.email.trim()
+    ) {
+      setMessage("⚠️ Vui lòng nhập đầy đủ thông tin.");
       return;
     }
 
@@ -55,29 +131,17 @@ function App() {
       setMessage("");
 
       const url = editingId
-        ? `${API_URL}/${editingId}`
+        ? `${API_URL}/${encodeURIComponent(editingId)}`
         : API_URL;
 
-      const method = editingId ? "PUT" : "POST";
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(form),
+      await apiRequest(url, {
+        method: editingId ? "PUT" : "POST",
+        body: JSON.stringify({
+          studentId: form.studentId.trim(),
+          name: form.name.trim(),
+          email: form.email.trim(),
+        }),
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.message ||
-            (editingId
-              ? "Không thể cập nhật sinh viên"
-              : "Không thể thêm sinh viên")
-        );
-      }
 
       setMessage(
         editingId
@@ -85,99 +149,78 @@ function App() {
           : "✅ Thêm sinh viên thành công!"
       );
 
-      setForm({
-        studentId: "",
-        name: "",
-        email: "",
-      });
-
+      setForm(EMPTY_FORM);
       setEditingId(null);
 
       await fetchStudents();
     } catch (error) {
-      console.error(error);
-      setMessage("❌ " + error.message);
+      console.error("Save student error:", error);
+      setMessage(`❌ ${error.message}`);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const handleEdit = (student) => {
+  // Chỉnh sửa sinh viên
+  function handleEdit(student) {
     setEditingId(student._id);
 
     setForm({
-      studentId: student.studentId,
-      name: student.name,
-      email: student.email,
+      studentId: student.studentId || "",
+      name: student.name || "",
+      email: student.email || "",
     });
 
-    setMessage("✏️ Đang chỉnh sửa sinh viên");
-  };
+    setMessage("✏️ Đang chỉnh sửa sinh viên.");
+  }
 
-  const handleDelete = async (id) => {
-    const confirmDelete = window.confirm(
+  // Xóa sinh viên
+  async function handleDelete(id) {
+    const confirmed = window.confirm(
       "Bạn có chắc chắn muốn xóa sinh viên này không?"
     );
 
-    if (!confirmDelete) return;
+    if (!confirmed) return;
 
     try {
       setLoading(true);
       setMessage("");
 
-      const response = await fetch(`${API_URL}/${id}`, {
-        method: "DELETE",
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.message || "Không thể xóa sinh viên"
-        );
-      }
+      await apiRequest(
+        `${API_URL}/${encodeURIComponent(id)}`,
+        { method: "DELETE" }
+      );
 
       setMessage("✅ Xóa sinh viên thành công!");
 
       if (editingId === id) {
         setEditingId(null);
-        setForm({
-          studentId: "",
-          name: "",
-          email: "",
-        });
+        setForm(EMPTY_FORM);
       }
 
       await fetchStudents();
     } catch (error) {
-      console.error(error);
-      setMessage("❌ " + error.message);
+      console.error("Delete student error:", error);
+      setMessage(`❌ ${error.message}`);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const handleCancelEdit = () => {
+  // Hủy chỉnh sửa
+  function handleCancelEdit() {
     setEditingId(null);
-
-    setForm({
-      studentId: "",
-      name: "",
-      email: "",
-    });
-
+    setForm(EMPTY_FORM);
     setMessage("");
-  };
+  }
 
   return (
     <div className="container">
-      <h1>Student Management</h1>
+      <h1>Student Management v2.0</h1>
 
       <div className="form-box">
         <h2>
-          {editingId
-            ? "Cập nhật sinh viên"
-            : "Thêm sinh viên"}
+          {editingId ? "Cập nhật sinh viên" : "Thêm sinh viên"}
         </h2>
 
         <form onSubmit={handleSubmit}>
@@ -187,6 +230,7 @@ function App() {
             placeholder="MSSV"
             value={form.studentId}
             onChange={handleChange}
+            required
           />
 
           <input
@@ -195,6 +239,7 @@ function App() {
             placeholder="Họ tên"
             value={form.name}
             onChange={handleChange}
+            required
           />
 
           <input
@@ -203,6 +248,7 @@ function App() {
             placeholder="Email"
             value={form.email}
             onChange={handleChange}
+            required
           />
 
           <button type="submit" disabled={loading}>
@@ -225,7 +271,9 @@ function App() {
         </form>
 
         {message && (
-          <p className="message">{message}</p>
+          <p className="message" role="status">
+            {message}
+          </p>
         )}
       </div>
 
@@ -253,6 +301,7 @@ function App() {
                   <td>{student.email}</td>
                   <td>
                     <button
+                      type="button"
                       onClick={() => handleEdit(student)}
                       disabled={loading}
                     >
@@ -260,9 +309,8 @@ function App() {
                     </button>
 
                     <button
-                      onClick={() =>
-                        handleDelete(student._id)
-                      }
+                      type="button"
+                      onClick={() => handleDelete(student._id)}
                       disabled={loading}
                     >
                       Xóa

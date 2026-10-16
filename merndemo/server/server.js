@@ -6,6 +6,7 @@ require("dotenv").config();
 const Student = require("./models/Students");
 
 const app = express();
+const APP_VERSION = "2.0";
 
 // ================================
 // LOG HTTP REQUEST
@@ -23,7 +24,7 @@ app.use((req, res, next) => {
 });
 
 // ================================
-// CẤU HÌNH CORS
+// CORS
 // ================================
 const allowedOrigins = [
   process.env.CLIENT_URL,
@@ -31,43 +32,57 @@ const allowedOrigins = [
   "http://localhost:3000",
 ].filter(Boolean);
 
-const corsOptions = {
-  origin: (origin, callback) => {
-    if (
-      !origin ||
-      allowedOrigins.includes(origin) ||
-      process.env.NODE_ENV !== "production"
-    ) {
-      return callback(null, true);
-    }
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        process.env.NODE_ENV !== "production"
+      ) {
+        return callback(null, true);
+      }
 
-    return callback(new Error("Origin không được phép bởi CORS"));
-  },
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true,
-};
+      return callback(new Error("Origin không được phép bởi CORS"));
+    },
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
+);
 
-app.use(cors(corsOptions));
-
-// ================================
-// MIDDLEWARE
-// ================================
 app.use(express.json());
 
 // ================================
-// API KIỂM TRA SERVER
+// CÂU 44: HEALTH CHECK
+// GET /health
+// ================================
+app.get("/health", (req, res) => {
+  const databaseConnected = mongoose.connection.readyState === 1;
+
+  res.status(databaseConnected ? 200 : 503).json({
+    status: databaseConnected ? "UP" : "DOWN",
+    version: APP_VERSION,
+    timestamp: new Date().toISOString(),
+    uptime: Math.floor(process.uptime()),
+    database: databaseConnected ? "connected" : "disconnected",
+  });
+});
+
+// ================================
+// API VERSION
 // GET /api/hello
 // ================================
 app.get("/api/hello", (req, res) => {
   res.status(200).json({
     message: "Backend đang hoạt động!",
+    version: APP_VERSION,
   });
 });
 
 // ================================
-// CÂU 36: GET /api/students
-// Lấy danh sách sinh viên
+// GET /api/students
+// LẤY DANH SÁCH SINH VIÊN
 // ================================
 app.get("/api/students", async (req, res) => {
   try {
@@ -78,14 +93,13 @@ app.get("/api/students", async (req, res) => {
 
     res.status(500).json({
       message: "Lỗi khi lấy danh sách sinh viên",
-      error: error.message,
     });
   }
 });
 
 // ================================
-// CÂU 37: POST /api/students
-// Thêm sinh viên
+// POST /api/students
+// THÊM SINH VIÊN
 // ================================
 app.post("/api/students", async (req, res) => {
   try {
@@ -102,8 +116,8 @@ app.post("/api/students", async (req, res) => {
 });
 
 // ================================
-// CÂU 38: PUT /api/students/:id
-// Cập nhật sinh viên
+// PUT /api/students/:id
+// CẬP NHẬT SINH VIÊN
 // ================================
 app.put("/api/students/:id", async (req, res) => {
   try {
@@ -134,8 +148,8 @@ app.put("/api/students/:id", async (req, res) => {
 });
 
 // ================================
-// CÂU 39: DELETE /api/students/:id
-// Xóa sinh viên
+// DELETE /api/students/:id
+// XÓA SINH VIÊN
 // ================================
 app.delete("/api/students/:id", async (req, res) => {
   try {
@@ -164,21 +178,29 @@ app.delete("/api/students/:id", async (req, res) => {
 });
 
 // ================================
-// KẾT NỐI MONGODB ATLAS
+// CONNECT MONGODB ATLAS
 // ================================
-mongoose
-  .connect(process.env.MONGODB_URI)
-  .then(() => {
+async function startServer() {
+  try {
+    if (!process.env.MONGODB_URI) {
+      throw new Error("Thiếu biến môi trường MONGODB_URI");
+    }
+
+    await mongoose.connect(process.env.MONGODB_URI);
     console.log("MongoDB Atlas connected successfully");
 
     const PORT = process.env.PORT || 5000;
 
-    app.listen(PORT, () => {
+    app.listen(PORT, "0.0.0.0", () => {
       console.log(`Server running on port ${PORT}`);
+      console.log(`Application version: ${APP_VERSION}`);
+      console.log("Health Check endpoint: /health");
       console.log("HTTP request logging enabled");
     });
-  })
-  .catch((error) => {
-    console.error("MongoDB connection error:", error);
+  } catch (error) {
+    console.error("Server startup error:", error.message);
     process.exit(1);
-  });
+  }
+}
+
+startServer();

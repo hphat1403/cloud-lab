@@ -4,10 +4,10 @@ WORKDIR /app
 
 COPY package.json package-lock.json ./
 
-RUN npm install
+RUN npm ci
 
-COPY server/ ./
+COPY server/ ./server/
 
 EXPOSE 5000
 
-CMD ["npm", "start"]
+CMD ["node", "server/server.js"]
